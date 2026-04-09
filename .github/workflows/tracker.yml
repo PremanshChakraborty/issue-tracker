@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           # Use PAT so the push commit doesn't re-trigger this workflow
-          token: ${{ secrets.GITHUB_PAT }}
+          token: ${{ secrets.GH_PAT }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -32,7 +32,7 @@ jobs:
       - name: Run tracker
         run: npm run start -w tracker
         env:
-          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
+          GH_PAT: ${{ secrets.GH_PAT }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 

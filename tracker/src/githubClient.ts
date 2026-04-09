@@ -78,11 +78,11 @@ async function ghFetch<T>(
   return { data, linkHeader };
 }
 
-// Fetch all pages of a paginated endpoint, with optional client-side date filter
+// Fetch all pages of a paginated endpoint — no early stopping.
+// Used for endpoints that natively support 'since' (e.g. comments).
 async function fetchAllPages<T extends { created_at: string }>(
   initialUrl: string,
   pat: string,
-  filterSince?: string,
 ): Promise<T[]> {
   const results: T[] = [];
   let url: string | null = initialUrl;
@@ -93,9 +93,39 @@ async function fetchAllPages<T extends { created_at: string }>(
     url = getNextUrl(linkHeader);
   }
 
-  if (filterSince) {
-    return results.filter((item) => item.created_at > filterSince);
+  return results;
+}
+
+/**
+ * Fetch pages of issue events with early-stop pagination.
+ *
+ * Events are returned newest-first (descending). Once we encounter the first
+ * event with created_at <= since, all subsequent items on that page AND every
+ * subsequent page are guaranteed to be older — so we stop immediately.
+ *
+ * This turns a full-history scan into an O(recent pages) operation.
+ */
+async function fetchEventsSince(initialUrl: string, pat: string, since: string): Promise<GHEvent[]> {
+  const results: GHEvent[] = [];
+  let url: string | null = initialUrl;
+
+  while (url) {
+    const { data, linkHeader } = await ghFetch<GHEvent[]>(url, pat);
+    let hitOldEvent = false;
+
+    for (const evt of data) {
+      if (evt.created_at <= since) {
+        // This event and everything after it is at-or-before 'since'. Stop.
+        hitOldEvent = true;
+        break;
+      }
+      results.push(evt);
+    }
+
+    if (hitOldEvent) break; // Don't fetch the next page — it's all old.
+    url = getNextUrl(linkHeader);
   }
+
   return results;
 }
 
@@ -116,8 +146,9 @@ export async function getRepoComments(
 }
 
 /**
- * Fetch all issue events in a repo, filtered client-side to events after 'since'.
- * GitHub events endpoint does not support a 'since' query param.
+ * Fetch all new issue events in a repo since a given ISO timestamp.
+ * Events are returned newest-first. We stop paginating as soon as we hit
+ * an event older than 'since', making this efficient even for large repos.
  */
 export async function getRepoEvents(
   owner: string,
@@ -126,7 +157,7 @@ export async function getRepoEvents(
   pat: string,
 ): Promise<GHEvent[]> {
   const url = `${GITHUB_API}/repos/${owner}/${repo}/issues/events?per_page=100`;
-  return fetchAllPages<GHEvent>(url, pat, since);
+  return fetchEventsSince(url, pat, since);
 }
 
 /**

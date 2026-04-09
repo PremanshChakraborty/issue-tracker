@@ -305,6 +305,22 @@ export function detectSignals(
     }
   }
 
+  if (config.mode === 'inactivity_watch' && comments.length > 0) {
+    // Notify on the FIRST new comment per run — enough to signal the issue is alive,
+    // without flooding. wip_watch deliberately skips this (spike detection is sufficient).
+    const first = comments[0]!;
+    notifications.push(
+      makeNotification(
+        issueRef,
+        config,
+        'comment',
+        first.user.login,
+        `@${first.user.login} commented${comments.length > 1 ? ` (+${comments.length - 1} more)` : ''}`,
+        first.body.slice(0, 200),
+      ),
+    );
+  }
+
   // inactivity_watch and wip_watch: time-based inactivity detection.
   if (config.mode === 'inactivity_watch' || config.mode === 'wip_watch') {
     if (!hasNewActivity && prevActivityAt) {

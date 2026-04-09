@@ -21,6 +21,12 @@ const KNOWN_BOTS = new Set([
   'allcontributors[bot]',
   'greenkeeper[bot]',
   'semantic-release-bot',
+  // AI review bots
+  'coderabbitai[bot]',
+  'geptile[bot]',
+  'copilot-pull-request-reviewer[bot]',
+  'sourcery-ai[bot]',
+  'deepsource-autofix[bot]',
 ]);
 
 const SPIKE_COMMENT_THRESHOLD = 3;  // ≥3 comments in one window
@@ -126,7 +132,7 @@ export function detectSignals(
 
   if (comments.length > 0) {
     const maxId = Math.max(...comments.map((c) => c.id));
-    if (!latestCommentId || maxId > latestCommentId) latestCommentId = maxId;
+    if (latestCommentId === null || maxId > latestCommentId) latestCommentId = maxId;
 
     const latestDate = new Date(
       Math.max(...comments.map((c) => new Date(c.created_at).getTime())),
@@ -136,7 +142,7 @@ export function detectSignals(
 
   if (rawEvents.length > 0) {
     const maxId = Math.max(...rawEvents.map((e) => e.id));
-    if (!latestEventId || maxId > latestEventId) latestEventId = maxId;
+    if (latestEventId === null || maxId > latestEventId) latestEventId = maxId;
 
     const latestDate = new Date(
       Math.max(...rawEvents.map((e) => new Date(e.created_at).getTime())),
@@ -152,7 +158,7 @@ export function detectSignals(
 
   const hasNewActivity = comments.length > 0 || rawEvents.length > 0;
 
-  // ── Activity spike detection (all modes) ──────────────────────────────────────
+  // ── Activity spike detection (all modes) — always fires regardless of notify_on ─
   if (
     prevActivityAt &&
     comments.length >= SPIKE_COMMENT_THRESHOLD &&
@@ -174,7 +180,7 @@ export function detectSignals(
   }
 
   // ── Mode: awaiting_reply ──────────────────────────────────────────────────────
-  if (config.mode === 'awaiting_reply') {
+  if (config.mode === 'awaiting_reply' && config.notify_on.includes('comments')) {
     const relevantComments = comments.filter((c) =>
       isRelevantForAwaitingReply(c.user.login, c.author_association, config.watch_users),
     );
@@ -226,17 +232,20 @@ export function detectSignals(
       updatedState.inactivity_last_alerted_at = null;
     }
 
-    // wip_watch: detect assignment dropped
-    if (config.mode === 'wip_watch') {
+    // wip_watch specific: assignment dropped
+    if (config.mode === 'wip_watch' && config.notify_on.includes('assignment')) {
       const unassignedEvents = rawEvents.filter((e) => e.event === 'unassigned');
       for (const evt of unassignedEvents) {
-        if (config.ignore_users.includes(evt.actor?.login ?? '')) continue;
+        const actor = evt.actor?.login ?? 'unknown';
+        if (config.ignore_users.includes(actor)) continue;
+        // Filter bot-triggered unassign events (e.g. stale bot)
+        if (isBot(actor, evt.actor?.type ?? 'User', settings.filter_bots)) continue;
         notifications.push(
           makeNotification(
             issueRef,
             config,
             'status_change',
-            evt.actor?.login ?? 'unknown',
+            actor,
             `Assignment dropped: @${evt.assignee?.login ?? 'unknown'} was unassigned`,
             'Issue may be available to pick up',
           ),
@@ -251,7 +260,7 @@ export function detectSignals(
     if (config.ignore_users.includes(actor)) continue;
     if (isBot(actor, evt.actor?.type ?? 'User', settings.filter_bots)) continue;
 
-    if (evt.event === 'closed') {
+    if (evt.event === 'closed' && config.notify_on.includes('status')) {
       notifications.push(
         makeNotification(
           issueRef,
@@ -264,7 +273,7 @@ export function detectSignals(
       );
     }
 
-    if (evt.event === 'reopened') {
+    if (evt.event === 'reopened' && config.notify_on.includes('reopened')) {
       notifications.push(
         makeNotification(
           issueRef,

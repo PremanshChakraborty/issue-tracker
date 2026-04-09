@@ -30,9 +30,9 @@ export interface GHComment {
 export interface GHEvent {
   id: number;
   actor: GHUser | null;
-  event: string; // "closed", "reopened", "labeled", "assigned", "unassigned", etc.
+  event: string; // 'closed', 'reopened', 'labeled', 'assigned', 'unassigned', etc.
   created_at: string;
-  issue: { number: number; title: string; state: string; html_url: string } | null;
+  // Note: 'issue' field is NOT present in per-issue events endpoint (implied by URL)
   label?: { name: string; color: string };
   assignee?: GHUser;
 }
@@ -116,16 +116,18 @@ export async function getRepoComments(
 }
 
 /**
- * Fetch all issue events in a repo, filtered client-side to events after 'since'.
- * GitHub events endpoint does not support a 'since' query param.
+ * Fetch events for a specific issue, filtered client-side to events after 'since'.
+ * Uses per-issue endpoint (repo-level has no 'since' param and is too broad for large repos).
+ * ~1 API call per watched issue per run — well within rate limits for a personal tool.
  */
-export async function getRepoEvents(
+export async function getIssueEvents(
   owner: string,
   repo: string,
+  issueNumber: number,
   since: string,
   pat: string,
 ): Promise<GHEvent[]> {
-  const url = `${GITHUB_API}/repos/${owner}/${repo}/issues/events?per_page=100`;
+  const url = `${GITHUB_API}/repos/${owner}/${repo}/issues/${issueNumber}/events?per_page=100`;
   return fetchAllPages<GHEvent>(url, pat, since);
 }
 

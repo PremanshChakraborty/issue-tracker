@@ -4,14 +4,24 @@ export type IssueMode = 'awaiting_reply' | 'inactivity_watch' | 'wip_watch';
 
 export type Priority = 'critical' | 'watching' | 'low';
 
+// These match the actual strings returned in `event` field by GitHub Issues Events API.
+// 'comments' is kept as a special token — it covers the separate comments endpoint.
 export type EventType =
-  | 'comments'
-  | 'labels'
-  | 'status'
-  | 'assignment'
-  | 'pr_linked'
-  | 'pr_merged'
-  | 'reopened';
+  | 'comments'        // new comment on the issue (separate endpoint)
+  | 'assigned'        // issue assigned to a user
+  | 'unassigned'      // assignment dropped
+  | 'labeled'         // label added
+  | 'unlabeled'       // label removed
+  | 'closed'          // issue closed
+  | 'reopened'        // issue reopened
+  | 'renamed'         // issue title changed
+  | 'cross-referenced'// another issue/PR referenced this one
+  | 'connected'       // PR linked via "closes #N"
+  | 'merged'          // linked PR was merged
+  | 'milestoned'      // added to a milestone
+  | 'demilestoned'    // removed from a milestone
+  | 'review_requested'// review requested on linked PR
+  | 'mentioned';      // user mentioned in issue body
 
 export type DigestOverride = 'instant' | 'digest';
 
@@ -100,12 +110,20 @@ export interface Notification {
 
 export const ALL_EVENT_TYPES: EventType[] = [
   'comments',
-  'labels',
-  'status',
-  'assignment',
-  'pr_linked',
-  'pr_merged',
+  'assigned',
+  'unassigned',
+  'labeled',
+  'unlabeled',
+  'closed',
   'reopened',
+  'renamed',
+  'cross-referenced',
+  'connected',
+  'merged',
+  'milestoned',
+  'demilestoned',
+  'review_requested',
+  'mentioned',
 ];
 
 export const MODE_DEFAULTS: Record<IssueMode, Partial<IssueConfig>> = {

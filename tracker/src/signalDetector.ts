@@ -21,16 +21,13 @@ const KNOWN_BOTS = new Set([
   'allcontributors[bot]',
   'greenkeeper[bot]',
   'semantic-release-bot',
-  // AI review bots
   'coderabbitai[bot]',
   'geptile[bot]',
-  'copilot-pull-request-reviewer[bot]',
-  'sourcery-ai[bot]',
-  'deepsource-autofix[bot]',
+  'sweep-ai[bot]',
 ]);
 
-const SPIKE_COMMENT_THRESHOLD = 3;  // ≥3 comments in one window
-const SPIKE_SILENCE_DAYS = 7;       // after ≥7 days of silence
+const SPIKE_COMMENT_THRESHOLD = 3; // ≥3 comments in one window
+const SPIKE_SILENCE_DAYS = 7;      // after ≥7 days of silence
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -76,9 +73,9 @@ function passesCommentFilter(
 }
 
 /**
- * Check if an actor should generate a signal in awaiting_reply mode.
- * Always includes OWNER/MEMBER/COLLABORATOR (safety net).
- * Also includes anyone explicitly listed in watch_users.
+ * Returns true only for comments that should trigger a signal in awaiting_reply mode.
+ * OWNER/MEMBER/COLLABORATOR are always included as a runtime safety net.
+ * Explicitly listed watch_users are also included.
  */
 function isRelevantForAwaitingReply(
   login: string,
@@ -88,6 +85,88 @@ function isRelevantForAwaitingReply(
   if (MAINTAINER_ASSOCIATIONS.includes(association)) return true;
   if (watchUsers.includes(login)) return true;
   return false;
+}
+
+/**
+ * Build a human-readable summary line for a GitHub issue event.
+ * Maps real GitHub API event type strings to readable text.
+ */
+function summariseEvent(evt: GHEvent): { summary: string; detail: string } {
+  const actor = evt.actor?.login ?? 'unknown';
+
+  switch (evt.event) {
+    case 'assigned':
+      return {
+        summary: `@${actor} assigned @${evt.assignee?.login ?? 'unknown'}`,
+        detail: '',
+      };
+    case 'unassigned':
+      return {
+        summary: `@${actor} unassigned @${evt.assignee?.login ?? 'unknown'}`,
+        detail: '',
+      };
+    case 'labeled':
+      return {
+        summary: `@${actor} added label "${evt.label?.name ?? 'unknown'}"`,
+        detail: '',
+      };
+    case 'unlabeled':
+      return {
+        summary: `@${actor} removed label "${evt.label?.name ?? 'unknown'}"`,
+        detail: '',
+      };
+    case 'closed':
+      return {
+        summary: `@${actor} closed the issue`,
+        detail: '',
+      };
+    case 'reopened':
+      return {
+        summary: `@${actor} reopened the issue`,
+        detail: '',
+      };
+    case 'renamed':
+      return {
+        summary: `@${actor} renamed the issue`,
+        detail: '',
+      };
+    case 'cross-referenced':
+    case 'connected':
+      return {
+        summary: `Issue was linked to a PR`,
+        detail: `Referenced by @${actor}`,
+      };
+    case 'merged':
+      return {
+        summary: `Linked PR was merged`,
+        detail: `Merged by @${actor}`,
+      };
+    case 'milestoned':
+      return {
+        summary: `@${actor} added to a milestone`,
+        detail: '',
+      };
+    case 'demilestoned':
+      return {
+        summary: `@${actor} removed from milestone`,
+        detail: '',
+      };
+    case 'review_requested':
+      return {
+        summary: `@${actor} requested a review`,
+        detail: '',
+      };
+    case 'mentioned':
+      return {
+        summary: `@${actor} was mentioned`,
+        detail: '',
+      };
+    default:
+      return {
+        summary: `@${actor} triggered "${evt.event}"`,
+        detail: '',
+      };
+  }
 }
 
 // ─── Main export ───────────────────────────────────────────────────────────────
@@ -110,21 +189,29 @@ export function detectSignals(
   const notifications: Notification[] = [];
   const updatedState: Partial<IssueState> = {};
 
-  // ── Snooze check ────────────────────────────────────────────────────────────
+  // ── Snooze check ─────────────────────────────────────────────────────────────
   if (config.snooze_until && new Date(config.snooze_until) > now) {
     console.log(`  [${issueRef}] Snoozed until ${config.snooze_until}, skipping.`);
     return { notifications: [], updatedState: {} };
   }
 
-  // ── Filter comments ──────────────────────────────────────────────────────────
-  const comments = rawComments.filter((c) => passesCommentFilter(c, config, settings));
-  const filteredEventActors = new Set(
-    rawEvents
-      .map((e) => e.actor?.login)
-      .filter((l): l is string => !!l && !config.ignore_users.includes(l)),
-  );
+  // ── Step A: Filter events upfront ────────────────────────────────────────────
+  // All event processing from this point uses filteredEvents only.
+  // rawEvents are never touched again.
+  const filteredEvents = rawEvents.filter((evt) => {
+    const login = evt.actor?.login ?? '';
+    const userType = evt.actor?.type ?? 'User';
+    if (isBot(login, userType, settings.filter_bots)) return false;
+    if (config.ignore_users.includes(login)) return false;
+    return true;
+  });
 
-  // ── Track latest state for state update ──────────────────────────────────────
+  // ── Step B: Filter comments ───────────────────────────────────────────────────
+  const comments = rawComments.filter((c) => passesCommentFilter(c, config, settings));
+
+  // ── Step C: Track latest IDs and timestamps for state update ──────────────────
+  // last_activity_at is updated from BOTH filtered comments and filtered events.
+  // Bot-triggered events do NOT update last_activity_at (they don't reset inactivity).
   const prevActivityAt = state.last_activity_at ? new Date(state.last_activity_at) : null;
   let latestActivityAt = prevActivityAt;
   let latestCommentId = state.last_comment_id;
@@ -132,7 +219,7 @@ export function detectSignals(
 
   if (comments.length > 0) {
     const maxId = Math.max(...comments.map((c) => c.id));
-    if (latestCommentId === null || maxId > latestCommentId) latestCommentId = maxId;
+    if (!latestCommentId || maxId > latestCommentId) latestCommentId = maxId;
 
     const latestDate = new Date(
       Math.max(...comments.map((c) => new Date(c.created_at).getTime())),
@@ -140,14 +227,20 @@ export function detectSignals(
     if (!latestActivityAt || latestDate > latestActivityAt) latestActivityAt = latestDate;
   }
 
-  if (rawEvents.length > 0) {
-    const maxId = Math.max(...rawEvents.map((e) => e.id));
-    if (latestEventId === null || maxId > latestEventId) latestEventId = maxId;
+  if (filteredEvents.length > 0) {
+    // Track max event ID across ALL raw events (for dedup on next run), not just filtered.
+    // But updated last_activity_at only from human events.
+    const rawMaxId = Math.max(...rawEvents.map((e) => e.id));
+    if (!latestEventId || rawMaxId > latestEventId) latestEventId = rawMaxId;
 
     const latestDate = new Date(
-      Math.max(...rawEvents.map((e) => new Date(e.created_at).getTime())),
+      Math.max(...filteredEvents.map((e) => new Date(e.created_at).getTime())),
     );
     if (!latestActivityAt || latestDate > latestActivityAt) latestActivityAt = latestDate;
+  } else if (rawEvents.length > 0) {
+    // Even if all events were bots, still advance last_event_id so we don't re-process.
+    const rawMaxId = Math.max(...rawEvents.map((e) => e.id));
+    if (!latestEventId || rawMaxId > latestEventId) latestEventId = rawMaxId;
   }
 
   updatedState.last_comment_id = latestCommentId;
@@ -156,9 +249,21 @@ export function detectSignals(
     updatedState.last_activity_at = latestActivityAt.toISOString();
   }
 
-  const hasNewActivity = comments.length > 0 || rawEvents.length > 0;
+  // hasNewActivity is true only for human-initiated activity (bot events excluded).
+  const hasNewActivity = comments.length > 0 || filteredEvents.length > 0;
 
-  // ── Activity spike detection (all modes) — always fires regardless of notify_on ─
+  // ── Step D: Event notifications (all modes, all events) ───────────────────────
+  // Every filtered (non-bot, non-ignored) event generates a notification.
+  // No mode check — events are facts and all modes care about them.
+  for (const evt of filteredEvents) {
+    const actor = evt.actor?.login ?? 'unknown';
+    const { summary, detail } = summariseEvent(evt);
+    notifications.push(
+      makeNotification(issueRef, config, 'status_change', actor, summary, detail),
+    );
+  }
+
+  // ── Step E: Activity spike detection (all modes) ──────────────────────────────
   if (
     prevActivityAt &&
     comments.length >= SPIKE_COMMENT_THRESHOLD &&
@@ -179,12 +284,13 @@ export function detectSignals(
     );
   }
 
-  // ── Mode: awaiting_reply ──────────────────────────────────────────────────────
-  if (config.mode === 'awaiting_reply' && config.notify_on.includes('comments')) {
+  // ── Step F: Mode-specific comment signals ─────────────────────────────────────
+
+  if (config.mode === 'awaiting_reply') {
+    // Only notify for comments from maintainers or explicitly watched users.
     const relevantComments = comments.filter((c) =>
       isRelevantForAwaitingReply(c.user.login, c.author_association, config.watch_users),
     );
-
     for (const comment of relevantComments) {
       notifications.push(
         makeNotification(
@@ -199,7 +305,7 @@ export function detectSignals(
     }
   }
 
-  // ── Mode: inactivity_watch | wip_watch (inactivity-based) ────────────────────
+  // inactivity_watch and wip_watch: time-based inactivity detection.
   if (config.mode === 'inactivity_watch' || config.mode === 'wip_watch') {
     if (!hasNewActivity && prevActivityAt) {
       const daysSilent = daysDiff(prevActivityAt, now);
@@ -227,63 +333,8 @@ export function detectSignals(
         }
       }
     } else if (hasNewActivity) {
-      // New activity resets inactivity state
       updatedState.inactivity_alerted = false;
       updatedState.inactivity_last_alerted_at = null;
-    }
-
-    // wip_watch specific: assignment dropped
-    if (config.mode === 'wip_watch' && config.notify_on.includes('assignment')) {
-      const unassignedEvents = rawEvents.filter((e) => e.event === 'unassigned');
-      for (const evt of unassignedEvents) {
-        const actor = evt.actor?.login ?? 'unknown';
-        if (config.ignore_users.includes(actor)) continue;
-        // Filter bot-triggered unassign events (e.g. stale bot)
-        if (isBot(actor, evt.actor?.type ?? 'User', settings.filter_bots)) continue;
-        notifications.push(
-          makeNotification(
-            issueRef,
-            config,
-            'status_change',
-            actor,
-            `Assignment dropped: @${evt.assignee?.login ?? 'unknown'} was unassigned`,
-            'Issue may be available to pick up',
-          ),
-        );
-      }
-    }
-  }
-
-  // ── Event-based signals (all modes): closed / reopened ────────────────────────
-  for (const evt of rawEvents) {
-    const actor = evt.actor?.login ?? 'unknown';
-    if (config.ignore_users.includes(actor)) continue;
-    if (isBot(actor, evt.actor?.type ?? 'User', settings.filter_bots)) continue;
-
-    if (evt.event === 'closed' && config.notify_on.includes('status')) {
-      notifications.push(
-        makeNotification(
-          issueRef,
-          config,
-          'status_change',
-          actor,
-          'Issue closed',
-          `Closed by @${actor}`,
-        ),
-      );
-    }
-
-    if (evt.event === 'reopened' && config.notify_on.includes('reopened')) {
-      notifications.push(
-        makeNotification(
-          issueRef,
-          config,
-          'status_change',
-          actor,
-          'Issue reopened',
-          `Reopened by @${actor}`,
-        ),
-      );
     }
   }
 

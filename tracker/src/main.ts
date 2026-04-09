@@ -1,7 +1,7 @@
 import { loadAll, saveState, saveWatchlist, saveNotifications } from './stateManager';
 import {
   getRepoComments,
-  getIssueEvents,
+  getRepoEvents,
   getIssue,
   extractIssueNumber,
 } from './githubClient';
@@ -137,14 +137,20 @@ async function main(): Promise<void> {
     const [owner, repoName] = repoKey.split('/') as [string, string];
     console.log(`\nRepo: ${repoKey} (${repoIssues.length} watched issue(s))`);
 
-    let repoComments: Awaited<ReturnType<typeof getRepoComments>> = [];
+    let repoComments = [];
+    let repoEvents = [];
 
     try {
-      repoComments = await getRepoComments(owner, repoName, since, pat);
-      console.log(`  Fetched ${repoComments.length} comment(s) for ${repoKey}`);
+      [repoComments, repoEvents] = await Promise.all([
+        getRepoComments(owner, repoName, since, pat),
+        getRepoEvents(owner, repoName, since, pat),
+      ]);
+      console.log(
+        `  Fetched ${repoComments.length} comment(s), ${repoEvents.length} event(s)`,
+      );
     } catch (err) {
       // Per-repo failure — log and continue, don't abort other repos
-      console.error(`  Failed to fetch comments for ${repoKey}:`, err);
+      console.error(`  Failed to fetch data for ${repoKey}:`, err);
       continue;
     }
 
@@ -152,20 +158,11 @@ async function main(): Promise<void> {
     for (const [issueRef, config] of repoIssues) {
       const { number: issueNumber } = parseIssueRef(issueRef);
 
-      // Comments: filter from repo batch (efficient — one call per repo)
+      // Filter to only this issue's comments/events
       const issueComments = repoComments.filter(
         (c) => extractIssueNumber(c.issue_url) === issueNumber,
       );
-
-      // Events: fetch per-issue (repo-level events endpoint has no 'since' param
-      // and would paginate through the entire repo history for large repos)
-      let issueEvents: Awaited<ReturnType<typeof getIssueEvents>> = [];
-      try {
-        issueEvents = await getIssueEvents(owner, repoName, issueNumber, since, pat);
-      } catch (err) {
-        console.warn(`  Failed to fetch events for ${issueRef}:`, err);
-        // Continue processing with no events rather than skipping the issue entirely
-      }
+      const issueEvents = repoEvents.filter((e) => e.issue?.number === issueNumber);
 
       console.log(
         `  Issue ${issueRef}: ${issueComments.length} comment(s), ${issueEvents.length} event(s)`,

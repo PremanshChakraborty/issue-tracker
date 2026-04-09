@@ -1,0 +1,10 @@
+{
+  "cron_interval_minutes": 30,
+  "digest_mode": false,
+  "digest_time": "08:00",
+  "quiet_hours_start": "23:00",
+  "quiet_hours_end": "07:00",
+  "filter_bots": true,
+  "min_comment_length": 10,
+  "default_mode": "inactivity_watch"
+}

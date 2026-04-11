@@ -10,9 +10,7 @@
       "inactivity_threshold_days": 3,
       "stale_re_alert_days": 2,
       "watch_users": [],
-      "ignore_users": [
-        "PremanshChakraborty"
-      ],
+      "ignore_users": [],
       "notify_on": [
         "comments",
         "closed",
@@ -21,7 +19,7 @@
         "assigned",
         "unassigned"
       ],
-      "digest_override": "instant",
+      "digest_override": "digest",
       "priority_bypass_quiet_hours": true,
       "snooze_until": null,
       "notes": "",
@@ -33,8 +31,8 @@
       "title": "issue 2",
       "added_at": "2026-04-11T10:00:00Z",
       "mode": "inactivity_watch",
-      "priority": "critical",
-      "inactivity_threshold_days": 1,
+      "priority": "watching",
+      "inactivity_threshold_days": 6,
       "stale_re_alert_days": 2,
       "watch_users": [],
       "ignore_users": [],
@@ -47,7 +45,7 @@
         "unassigned"
       ],
       "digest_override": "instant",
-      "priority_bypass_quiet_hours": true,
+      "priority_bypass_quiet_hours": false,
       "snooze_until": null,
       "notes": "",
       "auto_remove_on_close": true

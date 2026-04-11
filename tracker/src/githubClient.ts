@@ -3,6 +3,7 @@ const GITHUB_API = 'https://api.github.com';
 // ─── Response types ────────────────────────────────────────────────────────────
 
 export type AuthorAssociation =
+  | 'AUTHOR'
   | 'COLLABORATOR'
   | 'CONTRIBUTOR'
   | 'FIRST_TIMER'

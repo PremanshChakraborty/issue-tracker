@@ -73,17 +73,33 @@ function passesCommentFilter(
 }
 
 /**
- * Returns true only for comments that should trigger a signal in awaiting_reply mode.
- * OWNER/MEMBER/COLLABORATOR are always included as a runtime safety net.
- * Explicitly listed watch_users are also included.
+ * Returns true if the comment's author matches any of the watch_users policies.
+ * Keywords (case-insensitive): ALL, AUTHOR, MAINTAINER, CONTRIBUTOR, ASSIGNEE.
+ * Otherwise, expects an exact GitHub login match.
  */
-function isRelevantForAwaitingReply(
-  login: string,
-  association: AuthorAssociation,
+function isWatchedUser(
+  comment: GHComment,
   watchUsers: string[],
+  state: IssueState,
 ): boolean {
-  if (MAINTAINER_ASSOCIATIONS.includes(association)) return true;
-  if (watchUsers.includes(login)) return true;
+  if (!watchUsers || watchUsers.length === 0) return false;
+
+  const login = comment.user.login.toLowerCase();
+  const association = comment.author_association;
+  const authorLogin = state.issue_author?.toLowerCase() ?? '';
+  const assigneesLower = (state.assignees ?? []).map((a) => a.toLowerCase());
+
+  for (const w of watchUsers) {
+    const kw = w.toUpperCase();
+    if (kw === 'ALL') return true;
+    if (kw === 'AUTHOR' && (association === 'AUTHOR' || login === authorLogin)) return true;
+    if (kw === 'MAINTAINER' && MAINTAINER_ASSOCIATIONS.includes(association)) return true;
+    if (kw === 'CONTRIBUTOR' && ['CONTRIBUTOR', 'FIRST_TIMER', 'FIRST_TIME_CONTRIBUTOR'].includes(association)) return true;
+    if (kw === 'ASSIGNEE' && assigneesLower.includes(login)) return true;
+    
+    // Explicit username match
+    if (w.toLowerCase() === login) return true;
+  }
   return false;
 }
 
@@ -195,9 +211,8 @@ export function detectSignals(
     return { notifications: [], updatedState: {} };
   }
 
-  // ── Step A: Filter events upfront ────────────────────────────────────────────
   // All event processing from this point uses filteredEvents only.
-  // rawEvents are never touched again.
+  // rawEvents are never touched again, except for assignees tracking.
   const filteredEvents = rawEvents.filter((evt) => {
     const login = evt.actor?.login ?? '';
     const userType = evt.actor?.type ?? 'User';
@@ -205,6 +220,17 @@ export function detectSignals(
     if (config.ignore_users.includes(login)) return false;
     return true;
   });
+
+  // Track latest assignees iteratively based on assigned/unassigned events
+  let currentAssignees = [...(state.assignees ?? [])];
+  for (const evt of rawEvents) {
+    if (evt.event === 'assigned' && evt.assignee) {
+      if (!currentAssignees.includes(evt.assignee.login)) currentAssignees.push(evt.assignee.login);
+    } else if (evt.event === 'unassigned' && evt.assignee) {
+      currentAssignees = currentAssignees.filter(a => a !== evt.assignee!.login);
+    }
+  }
+  updatedState.assignees = currentAssignees;
 
   // ── Step B: Filter comments ───────────────────────────────────────────────────
   const comments = rawComments.filter((c) => passesCommentFilter(c, config, settings));
@@ -287,9 +313,9 @@ export function detectSignals(
   // ── Step F: Mode-specific comment signals ─────────────────────────────────────
 
   if (config.mode === 'awaiting_reply') {
-    // Only notify for comments from maintainers or explicitly watched users.
+    // Only notify for comments matching watch_users policies.
     const relevantComments = comments.filter((c) =>
-      isRelevantForAwaitingReply(c.user.login, c.author_association, config.watch_users),
+      isWatchedUser(c, config.watch_users, { ...state, assignees: currentAssignees }),
     );
     for (const comment of relevantComments) {
       notifications.push(

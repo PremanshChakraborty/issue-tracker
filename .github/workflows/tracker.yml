@@ -3,7 +3,7 @@ name: Issue Tracker Cron
 on:
   schedule:
     # Every 30 minutes
-    - cron: '*/30 * * * *'
+    - cron: "*/30 12 * * *"
   # Allow manual trigger for testing
   workflow_dispatch:
 
@@ -23,8 +23,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm install

@@ -74,6 +74,8 @@ export interface Watchlist {
 // ─── state.json ───────────────────────────────────────────────────────────────
 
 export interface IssueState {
+  issue_author: string;                 // login
+  assignees: string[];                  // array of logins
   last_comment_id: number | null;
   last_event_id: number | null;
   last_activity_at: string | null;      // ISO timestamp

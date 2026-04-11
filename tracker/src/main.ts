@@ -75,8 +75,10 @@ function isQuietHours(
 }
 
 /** Default IssueState for a newly tracked issue */
-function defaultIssueState(): IssueState {
+function defaultIssueState(author = '', assignees: string[] = []): IssueState {
   return {
+    issue_author: author,
+    assignees: assignees,
     last_comment_id: null,
     last_event_id: null,
     last_activity_at: null,
@@ -118,7 +120,7 @@ async function main(): Promise<void> {
       try {
         const issue = await getIssue(owner, repo, number, pat);
         state.issues[ref] = {
-          ...defaultIssueState(),
+          ...defaultIssueState(issue.user.login, issue.assignees.map((a) => a.login)),
           last_activity_at: issue.updated_at,
         };
         console.log(`  Initialized ${ref} with last_activity_at=${issue.updated_at}`);

@@ -104,6 +104,24 @@ function isWatchedUser(
 }
 
 /**
+ * Identify if the commenter is Author, Maintainer, or Assignee to append to their name.
+ */
+function getUserRoleLabel(
+  comment: GHComment,
+  state: IssueState,
+): string {
+  const login = comment.user.login.toLowerCase();
+  const association = comment.author_association;
+  const authorLogin = state.issue_author?.toLowerCase() ?? '';
+  const assigneesLower = (state.assignees ?? []).map((a) => a.toLowerCase());
+
+  if (association === 'AUTHOR' || login === authorLogin) return ' (Author)';
+  if (MAINTAINER_ASSOCIATIONS.includes(association)) return ' (Maintainer)';
+  if (assigneesLower.includes(login)) return ' (Assignee)';
+  return '';
+}
+
+/**
  * Build a human-readable summary line for a GitHub issue event.
  * Maps real GitHub API event type strings to readable text.
  */
@@ -275,8 +293,12 @@ export function detectSignals(
     updatedState.last_activity_at = latestActivityAt.toISOString();
   }
 
+  const relevantComments = comments.filter((c) =>
+    isWatchedUser(c, config.watch_users, { ...state, assignees: currentAssignees }),
+  );
+
   // hasNewActivity is true only for human-initiated activity (bot events excluded).
-  const hasNewActivity = comments.length > 0 || filteredEvents.length > 0;
+  const hasNewActivity = relevantComments.length > 0 || filteredEvents.length > 0;
 
   // ── Step D: Event notifications (all modes, all events) ───────────────────────
   // Every filtered (non-bot, non-ignored) event generates a notification.
@@ -314,34 +336,33 @@ export function detectSignals(
 
   if (config.mode === 'awaiting_reply') {
     // Only notify for comments matching watch_users policies.
-    const relevantComments = comments.filter((c) =>
-      isWatchedUser(c, config.watch_users, { ...state, assignees: currentAssignees }),
-    );
     for (const comment of relevantComments) {
+      const role = getUserRoleLabel(comment, { ...state, assignees: currentAssignees });
       notifications.push(
         makeNotification(
           issueRef,
           config,
           'comment',
           comment.user.login,
-          `@${comment.user.login} commented`,
+          `@${comment.user.login}${role} commented`,
           comment.body.slice(0, 200),
         ),
       );
     }
   }
 
-  if (config.mode === 'inactivity_watch' && comments.length > 0) {
+  if (config.mode === 'inactivity_watch' && relevantComments.length > 0) {
     // Notify on the FIRST new comment per run — enough to signal the issue is alive,
     // without flooding. wip_watch deliberately skips this (spike detection is sufficient).
-    const first = comments[0]!;
+    const first = relevantComments[0]!;
+    const role = getUserRoleLabel(first, { ...state, assignees: currentAssignees });
     notifications.push(
       makeNotification(
         issueRef,
         config,
         'comment',
         first.user.login,
-        `@${first.user.login} commented${comments.length > 1 ? ` (+${comments.length - 1} more)` : ''}`,
+        `@${first.user.login}${role} commented${comments.length > 1 ? ` (+${comments.length - 1} more)` : ''}`,
         first.body.slice(0, 200),
       ),
     );

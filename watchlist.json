@@ -9,7 +9,7 @@
       "priority": "critical",
       "inactivity_threshold_days": 3,
       "stale_re_alert_days": 2,
-      "watch_users": [],
+      "watch_users": ["Author"],
       "ignore_users": [],
       "notify_on": [
         "comments",
@@ -34,7 +34,7 @@
       "priority": "watching",
       "inactivity_threshold_days": 6,
       "stale_re_alert_days": 2,
-      "watch_users": [],
+      "watch_users": ["ASSIGNEE"],
       "ignore_users": [],
       "notify_on": [
         "comments",

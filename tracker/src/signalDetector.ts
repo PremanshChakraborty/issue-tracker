@@ -334,7 +334,7 @@ export function detectSignals(
 
   // ── Step F: Mode-specific comment signals ─────────────────────────────────────
 
-  if (config.mode === 'awaiting_reply') {
+  if (config.priority === 'critical') {
     // Only notify for comments matching watch_users policies.
     for (const comment of relevantComments) {
       const role = getUserRoleLabel(comment, { ...state, assignees: currentAssignees });
@@ -351,7 +351,7 @@ export function detectSignals(
     }
   }
 
-  if (config.mode === 'inactivity_watch' && relevantComments.length > 0) {
+  if (config.priority === 'watching' && relevantComments.length > 0) {
     // Notify on the FIRST new comment per run — enough to signal the issue is alive,
     // without flooding. wip_watch deliberately skips this (spike detection is sufficient).
     const first = relevantComments[0]!;
@@ -369,7 +369,7 @@ export function detectSignals(
   }
 
   // inactivity_watch and wip_watch: time-based inactivity detection.
-  if (config.mode === 'inactivity_watch' || config.mode === 'wip_watch') {
+  if (config.priority === 'watching' || config.priority === 'low') {
     if (!hasNewActivity && prevActivityAt) {
       const daysSilent = daysDiff(prevActivityAt, now);
 

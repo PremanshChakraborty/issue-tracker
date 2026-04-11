@@ -13,5 +13,35 @@
     },
     "delivered_to": "telegram",
     "digest_id": null
+  },
+  {
+    "id": "195f7218-b031-4f94-b1cc-2b8a7e9b4b3c",
+    "timestamp": "2026-04-11T10:52:30.402Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#1",
+    "type": "comment",
+    "mode_at_time": "awaiting_reply",
+    "priority_at_time": "critical",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty commented",
+      "detail": "Another comment to check author tracking"
+    },
+    "delivered_to": "telegram",
+    "digest_id": null
+  },
+  {
+    "id": "b152bb98-3c4f-41b8-ac89-0a7c895467b5",
+    "timestamp": "2026-04-11T10:52:30.402Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#1",
+    "type": "comment",
+    "mode_at_time": "awaiting_reply",
+    "priority_at_time": "critical",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty commented",
+      "detail": "author trackingg"
+    },
+    "delivered_to": "telegram",
+    "digest_id": null
   }
 ]

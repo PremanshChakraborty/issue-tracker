@@ -9,9 +9,18 @@
       "priority": "critical",
       "inactivity_threshold_days": 3,
       "stale_re_alert_days": 2,
-      "watch_users": ["PremanshChakraborty"],
+      "watch_users": [
+        "PremanshChakraborty"
+      ],
       "ignore_users": [],
-      "notify_on": ["comments", "closed", "reopened", "labeled", "assigned", "unassigned"],
+      "notify_on": [
+        "comments",
+        "closed",
+        "reopened",
+        "labeled",
+        "assigned",
+        "unassigned"
+      ],
       "digest_override": "instant",
       "priority_bypass_quiet_hours": true,
       "snooze_until": null,

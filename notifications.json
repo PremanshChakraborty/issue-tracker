@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "id": "e7893d31-0644-4836-b584-86fb9820b77a",
+    "timestamp": "2026-04-11T10:18:59.151Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#1",
+    "type": "comment",
+    "mode_at_time": "awaiting_reply",
+    "priority_at_time": "critical",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty commented",
+      "detail": "1st comment"
+    },
+    "delivered_to": "telegram",
+    "digest_id": null
+  }
+]

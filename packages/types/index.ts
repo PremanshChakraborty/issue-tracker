@@ -38,8 +38,9 @@ export interface GlobalSettings {
   cron_interval_minutes: number;
   digest_mode: boolean;
   digest_time: string;           // "HH:MM" 24h
-  quiet_hours_start: string;     // "HH:MM" 24h
-  quiet_hours_end: string;       // "HH:MM" 24h
+  quiet_hours_start: string;     // "HH:MM" 24h in the configured timezone
+  quiet_hours_end: string;       // "HH:MM" 24h in the configured timezone
+  timezone: string;              // IANA tz, e.g. "Asia/Kolkata". Defaults to "UTC"
   filter_bots: boolean;
   min_comment_length: number;
   default_mode: IssueMode;

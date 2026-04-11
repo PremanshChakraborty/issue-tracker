@@ -4,6 +4,7 @@
   "digest_time": "08:00",
   "quiet_hours_start": "14:00",
   "quiet_hours_end": "07:00",
+  "timezone": "Asia/Kolkata",
   "filter_bots": true,
   "min_comment_length": 1,
   "default_mode": "inactivity_watch"

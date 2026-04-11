@@ -45,13 +45,30 @@ function groupByRepo(
   return map;
 }
 
-/** Check if current time falls within configured quiet hours */
-function isQuietHours(settings: { quiet_hours_start: string; quiet_hours_end: string }, now: Date): boolean {
-  const pad = (n: number): string => String(n).padStart(2, '0');
-  const current = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+/** Check if current time falls within configured quiet hours.
+ *  Hour/minute comparison is done in settings.timezone (IANA, e.g. "Asia/Kolkata")
+ *  so the config always means what the user intends, regardless of the runner's
+ *  system timezone (GitHub Actions uses UTC).
+ */
+function isQuietHours(
+  settings: { quiet_hours_start: string; quiet_hours_end: string; timezone: string },
+  now: Date,
+): boolean {
+  // Resolve current time in the user's timezone
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: settings.timezone ?? 'UTC',
+  }).formatToParts(now);
+
+  const h = parts.find((p) => p.type === 'hour')?.value ?? '00';
+  const m = parts.find((p) => p.type === 'minute')?.value ?? '00';
+  const current = `${h}:${m}`;
+
   const { quiet_hours_start: start, quiet_hours_end: end } = settings;
   if (start === end) return false;
-  // Handles both same-day (09:00–18:00) and midnight-crossing (23:00–07:00)
+  // Handles same-day ranges (09:00–18:00) and midnight-crossing ranges (23:00–07:00)
   return start > end
     ? current >= start || current < end
     : current >= start && current < end;

@@ -10,7 +10,9 @@
       "inactivity_threshold_days": 3,
       "stale_re_alert_days": 2,
       "watch_users": [],
-      "ignore_users": ["PremanshChakraborty"],
+      "ignore_users": [
+        "PremanshChakraborty"
+      ],
       "notify_on": [
         "comments",
         "closed",

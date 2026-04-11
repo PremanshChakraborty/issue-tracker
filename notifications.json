@@ -58,5 +58,50 @@
     },
     "delivered_to": "telegram",
     "digest_id": null
+  },
+  {
+    "id": "aed82e41-d8a8-49f7-b56f-de762f9df838",
+    "timestamp": "2026-04-11T11:08:28.239Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#1",
+    "type": "status_change",
+    "mode_at_time": "awaiting_reply",
+    "priority_at_time": "critical",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty added label \"enhancement\"",
+      "detail": ""
+    },
+    "delivered_to": "telegram",
+    "digest_id": null
+  },
+  {
+    "id": "718079f1-0389-41f3-ab09-c9b6b9c07629",
+    "timestamp": "2026-04-11T11:08:28.239Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#1",
+    "type": "status_change",
+    "mode_at_time": "awaiting_reply",
+    "priority_at_time": "critical",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty assigned @PremanshChakraborty",
+      "detail": ""
+    },
+    "delivered_to": "telegram",
+    "digest_id": null
+  },
+  {
+    "id": "3bbfdeae-6f8c-46d1-a1fc-4795962d687f",
+    "timestamp": "2026-04-11T11:08:29.404Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#2",
+    "type": "inactivity",
+    "mode_at_time": "inactivity_watch",
+    "priority_at_time": "critical",
+    "payload": {
+      "actor": "system",
+      "summary": "Inactive for 3 days",
+      "detail": "No activity since 2026-04-08"
+    },
+    "delivered_to": "telegram",
+    "digest_id": null
   }
 ]

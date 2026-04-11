@@ -43,5 +43,20 @@
     },
     "delivered_to": "telegram",
     "digest_id": null
+  },
+  {
+    "id": "390fb4c5-1be2-4645-b91b-f31bb4c8c31e",
+    "timestamp": "2026-04-11T11:02:15.910Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#2",
+    "type": "comment",
+    "mode_at_time": "inactivity_watch",
+    "priority_at_time": "critical",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty commented",
+      "detail": "i am a very dumb tester"
+    },
+    "delivered_to": "telegram",
+    "digest_id": null
   }
 ]

@@ -30,7 +30,7 @@
       "issue_number": 2,
       "title": "issue 2",
       "added_at": "2026-04-11T10:00:00Z",
-      "mode": "awaiting_reply",
+      "mode": "inactivity_watch",
       "priority": "critical",
       "inactivity_threshold_days": 3,
       "stale_re_alert_days": 2,

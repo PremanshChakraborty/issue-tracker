@@ -21,7 +21,6 @@
         "assigned",
         "unassigned"
       ],
-      "digest_override": "digest",
       "priority_bypass_quiet_hours": true,
       "snooze_until": null,
       "notes": "",
@@ -48,7 +47,6 @@
         "assigned",
         "unassigned"
       ],
-      "digest_override": "instant",
       "priority_bypass_quiet_hours": false,
       "snooze_until": null,
       "notes": "",

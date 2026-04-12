@@ -23,14 +23,12 @@ export type EventType =
   | 'review_requested'// review requested on linked PR
   | 'mentioned';      // user mentioned in issue body
 
-export type DigestOverride = 'instant' | 'digest';
-
 export type NotificationType =
   | 'comment'
   | 'inactivity'
   | 'status_change'
   | 'spike'
-  | 'digest';
+  | 'daily_digest';
 
 // ─── settings.json ────────────────────────────────────────────────────────────
 
@@ -60,7 +58,6 @@ export interface IssueConfig {
   watch_users: string[];               // GitHub usernames to watch
   ignore_users: string[];              // GitHub usernames to ignore
   notify_on: EventType[];
-  digest_override: DigestOverride;
   priority_bypass_quiet_hours: boolean;
   snooze_until: string | null;         // ISO timestamp or null
   notes: string;
@@ -82,10 +79,13 @@ export interface IssueState {
   inactivity_alerted: boolean;
   inactivity_last_alerted_at: string | null; // ISO timestamp
   last_telegram_message_id: number | null;
+  window_comment_count: number;         // Reset when spike triggers or digest sends
+  window_event_count: number;           // Reset when digest sends
 }
 
 export interface TrackerState {
   last_run: string | null;              // ISO timestamp
+  last_digest_sent_at: string | null;   // ISO timestamp
   issues: Record<string, IssueState>;  // key: "owner/repo#number"
 }
 
@@ -105,8 +105,7 @@ export interface Notification {
   mode_at_time: IssueMode;
   priority_at_time: Priority;
   payload: NotificationPayload;
-  delivered_to: 'telegram' | 'undelivered';
-  digest_id: string | null;
+  delivered_to: 'telegram' | 'undelivered' | 'frontend_only';
 }
 
 // ─── Mode defaults ────────────────────────────────────────────────────────────
@@ -135,7 +134,6 @@ export const MODE_DEFAULTS: Record<IssueMode, Partial<IssueConfig>> = {
     inactivity_threshold_days: 3,
     stale_re_alert_days: 2,
     notify_on: ALL_EVENT_TYPES,
-    digest_override: 'instant',
     priority_bypass_quiet_hours: true,
     auto_remove_on_close: true,
   },
@@ -144,7 +142,6 @@ export const MODE_DEFAULTS: Record<IssueMode, Partial<IssueConfig>> = {
     inactivity_threshold_days: 14,
     stale_re_alert_days: 7,
     notify_on: ALL_EVENT_TYPES,
-    digest_override: 'digest',
     priority_bypass_quiet_hours: false,
     auto_remove_on_close: false,
   },
@@ -153,8 +150,37 @@ export const MODE_DEFAULTS: Record<IssueMode, Partial<IssueConfig>> = {
     inactivity_threshold_days: 21,
     stale_re_alert_days: 10,
     notify_on: ALL_EVENT_TYPES,
-    digest_override: 'digest',
     priority_bypass_quiet_hours: false,
     auto_remove_on_close: true,
   },
 };
+
+export interface DailyDigestPayload {
+  date: string;
+  
+  critical_summary: Array<{ 
+    ref: string; 
+    comments_today: number; 
+    events_today: number; 
+  }>;
+
+  watching: Array<{
+    ref: string;
+    is_inactive: boolean;
+    inactivity_days?: number;
+    grouped_comments?: {
+      authorLogin: string;
+      roleLabel: string;
+      first_body_snippet: string;
+      total_count: number;
+    };
+  }>;
+
+  low: Array<{
+    ref: string;
+    is_inactive: boolean;
+    inactivity_days?: number;
+    total_comments_today: number;
+    total_events_today: number; 
+  }>;
+}

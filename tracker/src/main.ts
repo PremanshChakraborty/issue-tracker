@@ -6,7 +6,8 @@ import {
   extractIssueNumber,
 } from './githubClient';
 import { detectSignals } from './signalDetector';
-import { sendInstant, sendDigest } from './telegramNotifier';
+import { sendInstant, sendDailyDigest } from './telegramNotifier';
+import { generateDailyDigest } from './digestGenerator';
 import type {
   IssueConfig,
   IssueState,
@@ -85,6 +86,8 @@ function defaultIssueState(author = '', assignees: string[] = []): IssueState {
     inactivity_alerted: false,
     inactivity_last_alerted_at: null,
     last_telegram_message_id: null,
+    window_comment_count: 0,
+    window_event_count: 0,
   };
 }
 
@@ -148,6 +151,7 @@ async function main(): Promise<void> {
   };
   const updatedState: TrackerState = {
     ...state,
+    last_digest_sent_at: state.last_digest_sent_at ?? null,
     issues: { ...state.issues },
   };
 
@@ -210,51 +214,66 @@ async function main(): Promise<void> {
         console.log(`  Auto-removed ${issueRef} from watchlist (issue closed).`);
       }
 
-      // 10. Route notifications: instant vs digest, respecting quiet hours
+      // 10. Route notifications: instant vs frontend_only, respecting quiet hours
       for (const notif of newNotifs) {
-        const bypassQuietHours =
-          config.priority === 'critical' && config.priority_bypass_quiet_hours;
+        const bypassQuietHours = config.priority === 'critical' && config.priority_bypass_quiet_hours;
 
         if (quietHours && !bypassQuietHours) {
-          console.log(
-            `  [quiet hours] Suppressed ${notif.type} notification for ${issueRef}`,
-          );
+          console.log(`  [quiet hours] Suppressed ${notif.type} notification for ${issueRef}`);
           notif.delivered_to = 'undelivered';
           allNewNotifications.push(notif);
           continue;
         }
 
-        if (config.digest_override === 'instant') {
-          try {
-            const msgId = await sendInstant(notif, config, telegramToken, telegramChatId);
-            updatedState.issues[issueRef]!.last_telegram_message_id = msgId;
-          } catch (err) {
-            console.error(`  Failed to send instant notification for ${issueRef}:`, err);
-            notif.delivered_to = 'undelivered';
-          }
+        if (notif.delivered_to === 'frontend_only') {
           allNewNotifications.push(notif);
-        } else {
-          // Queue for digest — mark as delivered when digest sends
-          digestQueue.push(notif);
-          allNewNotifications.push(notif);
+          continue;
         }
+
+        try {
+          const msgId = await sendInstant(notif, config, telegramToken, telegramChatId);
+          updatedState.issues[issueRef]!.last_telegram_message_id = msgId;
+        } catch (err) {
+          console.error(`  Failed to send instant notification for ${issueRef}:`, err);
+          notif.delivered_to = 'undelivered';
+        }
+        allNewNotifications.push(notif);
       }
     }
   }
 
-  // 11. Send digest bundle if anything was queued
-  if (digestQueue.length > 0) {
-    const configMap = new Map<string, IssueConfig>(
-      Object.entries(watchlist.issues),
-    );
-    try {
-      await sendDigest(digestQueue, configMap, telegramToken, telegramChatId);
-    } catch (err) {
-      console.error('Failed to send digest:', err);
-      for (const n of digestQueue) {
-        n.delivered_to = 'undelivered';
-      }
-    }
+  // 11. Daily Digest Loop
+  const digestTimeParts = settings.digest_time.split(':');
+  const dHour = parseInt(digestTimeParts[0] ?? '8', 10);
+  const dMin = parseInt(digestTimeParts[1] ?? '0', 10);
+  
+  const todayDigestCheck = new Date(now);
+  todayDigestCheck.setHours(dHour, dMin, 0, 0);
+
+  const lastDigest = updatedState.last_digest_sent_at ? new Date(updatedState.last_digest_sent_at) : new Date(0);
+  
+  const hasSentToday = lastDigest >= todayDigestCheck;
+  if (now >= todayDigestCheck && !hasSentToday) {
+     console.log('\n--- Generating Daily Digest ---');
+     const sinceStr = lastDigest.getTime() > 0 ? lastDigest.toISOString() : new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+     const payload = await generateDailyDigest(watchlist, updatedState, settings, sinceStr, now, pat);
+     
+     if (payload && (payload.low.length > 0 || payload.watching.length > 0 || payload.critical_summary.length > 0)) {
+        const configMap = new Map(Object.entries(watchlist.issues));
+        try {
+           await sendDailyDigest(payload, configMap, telegramToken, telegramChatId);
+           updatedState.last_digest_sent_at = now.toISOString();
+           for (const st of Object.values(updatedState.issues)) {
+             st.window_comment_count = 0;
+             st.window_event_count = 0;
+           }
+        } catch (err) {
+           console.error('Failed to send Daily Digest:', err);
+        }
+     } else {
+        console.log('Daily digest skipped, payload empty.');
+        updatedState.last_digest_sent_at = now.toISOString();
+     }
   }
 
   // 12. Update last_run and persist all files

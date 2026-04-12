@@ -1,8 +1,7 @@
 {
   "cron_interval_minutes": 1000,
-  "digest_mode": false,
-  "digest_time": "08:00",
-  "quiet_hours_start": "00:00",
+  "digest_time": "18:00",
+  "quiet_hours_start": "22:00",
   "quiet_hours_end": "07:00",
   "timezone": "Asia/Kolkata",
   "filter_bots": true,

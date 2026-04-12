@@ -1,24 +1,24 @@
-import type { Notification, IssueConfig, IssueMode } from '@issue-tracker/types';
+import type { Notification, IssueConfig, Priority, DailyDigestPayload } from '@issue-tracker/types';
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
-// ─── Mode display helpers ──────────────────────────────────────────────────────
+// ─── Priority display helpers ──────────────────────────────────────────────────
 
-const MODE_EMOJI: Record<IssueMode, string> = {
-  awaiting_reply: '🔴',
-  inactivity_watch: '🟡',
-  wip_watch: '🔵',
+const PRIORITY_EMOJI: Record<Priority, string> = {
+  critical: '🚨',
+  watching: '👀',
+  low: '🔵',
 };
 
 // ─── Message building ──────────────────────────────────────────────────────────
 
 function buildInstantMessage(notif: Notification, config: IssueConfig): string {
-  const emoji = MODE_EMOJI[notif.mode_at_time];
+  const emoji = PRIORITY_EMOJI[notif.priority_at_time];
   const issueUrl = `https://github.com/${config.repo}/issues/${config.issue_number}`;
   const { actor, summary, detail } = notif.payload;
 
   return [
-    `${emoji} <b>[${notif.mode_at_time}]</b> ${config.repo}#${config.issue_number}`,
+    `${emoji} <b>[${notif.priority_at_time.toUpperCase()}]</b> ${config.repo}#${config.issue_number}`,
     `<i>${escapeHtml(config.title)}</i>`,
     ``,
     `↳ ${escapeHtml(summary)}`,
@@ -30,25 +30,57 @@ function buildInstantMessage(notif: Notification, config: IssueConfig): string {
     .join('\n');
 }
 
-function buildDigestMessage(
-  notifications: Notification[],
-  configMap: Map<string, IssueConfig>,
-): string {
-  // Group by issue_ref
-  const byIssue = new Map<string, Notification[]>();
-  for (const n of notifications) {
-    if (!byIssue.has(n.issue_ref)) byIssue.set(n.issue_ref, []);
-    byIssue.get(n.issue_ref)!.push(n);
+function buildDailyDigestMessage(payload: DailyDigestPayload, configMap: Map<string, IssueConfig>): string {
+  const lines: string[] = [`🌅 <b>Daily Issue Digest</b> (${payload.date})`, ''];
+
+  if (payload.low.length > 0) {
+    lines.push(`🗄️ <b>Low Priority Activity</b>`);
+    for (const item of payload.low) {
+      const config = configMap.get(item.ref)!;
+      const url = `https://github.com/${config.repo}/issues/${config.issue_number}`;
+      lines.push(`• <a href="${url}">${config.repo}#${config.issue_number}</a>: ` + 
+        (item.is_inactive ? `<i>Inactive for ${item.inactivity_days}d</i> ` : '') +
+        (item.total_comments_today > 0 ? `💬 ${item.total_comments_today} ` : '') +
+        (item.total_events_today > 0 ? `🔄 ${item.total_events_today}` : '')
+      );
+    }
+    lines.push('');
   }
 
-  const lines: string[] = [`📋 <b>Digest — ${notifications.length} update(s)</b>`, ''];
+  if (payload.watching.length > 0) {
+    lines.push(`👀 <b>Watching Updates</b>`);
+    for (const item of payload.watching) {
+      const config = configMap.get(item.ref)!;
+      const url = `https://github.com/${config.repo}/issues/${config.issue_number}`;
+      lines.push(`• <b><a href="${url}">${config.repo}#${config.issue_number}</a></b>`);
+      
+      if (item.is_inactive) {
+        lines.push(`  ↳ 📉 <i>Inactive for ${item.inactivity_days} days</i>`);
+      }
+      if (item.grouped_comments) {
+         const { authorLogin, roleLabel, first_body_snippet, total_count } = item.grouped_comments;
+         const moreText = total_count > 1 ? ` (+${total_count - 1} more)` : '';
+         lines.push(`  ↳ 💬 @${authorLogin}${roleLabel} commented${moreText}`);
+         lines.push(`    <code>${escapeHtml(first_body_snippet)}</code>`);
+      }
+    }
+    lines.push('');
+  }
 
-  for (const [ref, notifs] of byIssue) {
-    const config = configMap.get(ref);
-    const label = config ? `${config.repo}#${config.issue_number}` : ref;
-    const emoji = MODE_EMOJI[notifs[0]!.mode_at_time] ?? '⚪';
-    const summary = notifs.map((n) => n.payload.summary).join('; ');
-    lines.push(`${emoji} <b>${label}</b> — ${escapeHtml(summary)}`);
+  if (payload.critical_summary.length > 0) {
+    lines.push(`🚨 <b>Critical Health</b>`);
+    for (const item of payload.critical_summary) {
+       const config = configMap.get(item.ref)!;
+       const url = `https://github.com/${config.repo}/issues/${config.issue_number}`;
+       lines.push(`• <a href="${url}">${config.repo}#${config.issue_number}</a>: ` +
+         (item.comments_today > 0 ? `💬 ${item.comments_today} ` : '') +
+         (item.events_today > 0 ? `🔄 ${item.events_today}` : '')
+       );
+    }
+  }
+
+  if (payload.low.length === 0 && payload.watching.length === 0 && payload.critical_summary.length === 0) {
+     lines.push('<i>No activity to report today.</i>');
   }
 
   return lines.join('\n');
@@ -105,15 +137,14 @@ export async function sendInstant(
   return messageId;
 }
 
-export async function sendDigest(
-  notifications: Notification[],
+export async function sendDailyDigest(
+  payload: DailyDigestPayload,
   configMap: Map<string, IssueConfig>,
   token: string,
   chatId: string,
 ): Promise<number> {
-  if (notifications.length === 0) return 0;
-  const text = buildDigestMessage(notifications, configMap);
+  const text = buildDailyDigestMessage(payload, configMap);
   const messageId = await sendMessage(text, token, chatId);
-  console.log(`  📋 Sent digest with ${notifications.length} update(s) (msg_id: ${messageId})`);
+  console.log(`  🌅 Sent Daily Digest (msg_id: ${messageId})`);
   return messageId;
 }

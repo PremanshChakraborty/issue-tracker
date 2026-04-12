@@ -31,7 +31,7 @@ const SPIKE_SILENCE_DAYS = 7;      // after ≥7 days of silence
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-function daysDiff(from: Date, to: Date): number {
+export function daysDiff(from: Date, to: Date): number {
   return (to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24);
 }
 
@@ -52,7 +52,6 @@ function makeNotification(
     priority_at_time: config.priority,
     payload: { actor, summary, detail },
     delivered_to: 'telegram',
-    digest_id: null,
   };
 }
 
@@ -61,7 +60,7 @@ function isBot(login: string, userType: string, filterBots: boolean): boolean {
   return userType === 'Bot' || KNOWN_BOTS.has(login);
 }
 
-function passesCommentFilter(
+export function passesCommentFilter(
   comment: GHComment,
   config: IssueConfig,
   settings: GlobalSettings,
@@ -77,7 +76,7 @@ function passesCommentFilter(
  * Keywords (case-insensitive): ALL, AUTHOR, MAINTAINER, CONTRIBUTOR, ASSIGNEE.
  * Otherwise, expects an exact GitHub login match.
  */
-function isWatchedUser(
+export function isWatchedUser(
   comment: GHComment,
   watchUsers: string[],
   state: IssueState,
@@ -106,7 +105,7 @@ function isWatchedUser(
 /**
  * Identify if the commenter is Author, Maintainer, or Assignee to append to their name.
  */
-function getUserRoleLabel(
+export function getUserRoleLabel(
   comment: GHComment,
   state: IssueState,
 ): string {
@@ -300,42 +299,40 @@ export function detectSignals(
   // hasNewActivity is true only for human-initiated activity (bot events excluded).
   const hasNewActivity = relevantComments.length > 0 || filteredEvents.length > 0;
 
-  // ── Step D: Event notifications (all modes, all events) ───────────────────────
-  // Every filtered (non-bot, non-ignored) event generates a notification.
-  // No mode check — events are facts and all modes care about them.
+  updatedState.window_comment_count = (state.window_comment_count ?? 0) + relevantComments.length;
+  updatedState.window_event_count = (state.window_event_count ?? 0) + filteredEvents.length;
+
+  // ── Step D: Event notifications ───────────────────────────────────────────────
   for (const evt of filteredEvents) {
     const actor = evt.actor?.login ?? 'unknown';
     const { summary, detail } = summariseEvent(evt);
-    notifications.push(
-      makeNotification(issueRef, config, 'status_change', actor, summary, detail),
-    );
+    const notif = makeNotification(issueRef, config, 'status_change', actor, summary, detail);
+    if (config.priority === 'low') {
+       notif.delivered_to = 'frontend_only';
+    }
+    notifications.push(notif);
   }
 
-  // ── Step E: Activity spike detection (all modes) ──────────────────────────────
-  if (
-    prevActivityAt &&
-    comments.length >= SPIKE_COMMENT_THRESHOLD &&
-    daysDiff(prevActivityAt, now) >= SPIKE_SILENCE_DAYS
-  ) {
-    const firstActors = [...new Set(comments.slice(0, 5).map((c) => `@${c.user.login}`))].join(
-      ', ',
-    );
-    notifications.push(
-      makeNotification(
-        issueRef,
-        config,
-        'spike',
-        comments[0]?.user.login ?? 'unknown',
-        `Activity spike: ${comments.length} new comments after ${Math.floor(daysDiff(prevActivityAt, now))} days of silence`,
-        `Active users: ${firstActors}`,
-      ),
-    );
+  // ── Step E: Activity spike detection ──────────────────────────────────────────
+  if (config.priority !== 'critical' && config.priority !== 'low') {
+    if (updatedState.window_comment_count >= SPIKE_COMMENT_THRESHOLD) {
+      const firstActors = [...new Set(relevantComments.slice(0, 5).map((c) => `@${c.user.login}`))].join(', ');
+      notifications.push(
+        makeNotification(
+          issueRef,
+          config,
+          'spike',
+          relevantComments[0]?.user.login ?? 'unknown',
+          `Activity spike: ${updatedState.window_comment_count} new comments detected`,
+          `Active users recently: ${firstActors}`
+        )
+      );
+      updatedState.window_comment_count = 0; // Reset after firing
+    }
   }
 
-  // ── Step F: Mode-specific comment signals ─────────────────────────────────────
-
+  // ── Step F: Priority-Specific Comments ────────────────────────────────────────
   if (config.priority === 'critical') {
-    // Only notify for comments matching watch_users policies.
     for (const comment of relevantComments) {
       const role = getUserRoleLabel(comment, { ...state, assignees: currentAssignees });
       notifications.push(
@@ -349,57 +346,24 @@ export function detectSignals(
         ),
       );
     }
-  }
-
-  if (config.priority === 'watching' && relevantComments.length > 0) {
-    // Notify on the FIRST new comment per run — enough to signal the issue is alive,
-    // without flooding. wip_watch deliberately skips this (spike detection is sufficient).
-    const first = relevantComments[0]!;
-    const role = getUserRoleLabel(first, { ...state, assignees: currentAssignees });
-    notifications.push(
-      makeNotification(
+  } else if (config.priority === 'low') {
+    // Generate frontend-only comment notifications for persistence
+    for (const comment of relevantComments) {
+      const role = getUserRoleLabel(comment, { ...state, assignees: currentAssignees });
+      const notif = makeNotification(
         issueRef,
         config,
         'comment',
-        first.user.login,
-        `@${first.user.login}${role} commented${comments.length > 1 ? ` (+${comments.length - 1} more)` : ''}`,
-        first.body.slice(0, 200),
-      ),
-    );
-  }
-
-  // inactivity_watch and wip_watch: time-based inactivity detection.
-  if (config.priority === 'watching' || config.priority === 'low') {
-    if (!hasNewActivity && prevActivityAt) {
-      const daysSilent = daysDiff(prevActivityAt, now);
-
-      if (daysSilent >= config.inactivity_threshold_days) {
-        const alreadyAlerted = state.inactivity_alerted;
-        const lastAlertedAt = state.inactivity_last_alerted_at
-          ? new Date(state.inactivity_last_alerted_at)
-          : null;
-        const daysSinceAlert = lastAlertedAt ? daysDiff(lastAlertedAt, now) : Infinity;
-
-        if (!alreadyAlerted || daysSinceAlert >= config.stale_re_alert_days) {
-          notifications.push(
-            makeNotification(
-              issueRef,
-              config,
-              'inactivity',
-              'system',
-              `Inactive for ${Math.floor(daysSilent)} days`,
-              `No activity since ${prevActivityAt.toISOString().split('T')[0]}`,
-            ),
-          );
-          updatedState.inactivity_alerted = true;
-          updatedState.inactivity_last_alerted_at = now.toISOString();
-        }
-      }
-    } else if (hasNewActivity) {
-      updatedState.inactivity_alerted = false;
-      updatedState.inactivity_last_alerted_at = null;
+        comment.user.login,
+        `@${comment.user.login}${role} commented`,
+        comment.body.slice(0, 200),
+      );
+      notif.delivered_to = 'frontend_only';
+      notifications.push(notif);
     }
   }
+  // 'watching' priority gets NO instant comment notifications (they go to daily digest).
+  // Inactivity is entirely handled statically during the Daily Digest generation.
 
   return { notifications, updatedState };
 }

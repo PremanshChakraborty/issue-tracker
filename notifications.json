@@ -178,5 +178,20 @@
     },
     "delivered_to": "undelivered",
     "digest_id": null
+  },
+  {
+    "id": "296e1016-5b60-42af-ac2c-5bdaac90be04",
+    "timestamp": "2026-04-12T08:42:19.327Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#1",
+    "type": "comment",
+    "mode_at_time": "awaiting_reply",
+    "priority_at_time": "critical",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty (Author) commented",
+      "detail": "watch users test"
+    },
+    "delivered_to": "telegram",
+    "digest_id": null
   }
 ]

@@ -193,5 +193,35 @@
     },
     "delivered_to": "telegram",
     "digest_id": null
+  },
+  {
+    "id": "9499bde2-d933-4845-a3fd-1baad316be70",
+    "timestamp": "2026-04-12T08:45:10.987Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#2",
+    "type": "status_change",
+    "mode_at_time": "inactivity_watch",
+    "priority_at_time": "watching",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty assigned @PremanshChakraborty",
+      "detail": ""
+    },
+    "delivered_to": "telegram",
+    "digest_id": null
+  },
+  {
+    "id": "51b2352e-68aa-4571-99b9-f7526a33470f",
+    "timestamp": "2026-04-12T08:45:10.987Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#2",
+    "type": "comment",
+    "mode_at_time": "inactivity_watch",
+    "priority_at_time": "watching",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty (Author) commented",
+      "detail": "watch assignee"
+    },
+    "delivered_to": "telegram",
+    "digest_id": null
   }
 ]

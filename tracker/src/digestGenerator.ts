@@ -53,7 +53,8 @@ export async function generateDailyDigest(
       const issueState = state.issues[issueRef];
       if (!issueState) continue;
       
-      const { number: issueNumber } = (issueRef.match(/#(\d+)$/) || []) as any;
+      const match = issueRef.match(/#(\d+)$/);
+      const issueNumber = match ? match[1] : null;
       if (!issueNumber) continue;
 
       const prevActivityAt = issueState.last_activity_at ? new Date(issueState.last_activity_at) : null;

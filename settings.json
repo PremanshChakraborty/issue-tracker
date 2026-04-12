@@ -1,5 +1,5 @@
 {
-  "cron_interval_minutes": 1000,
+  "cron_interval_minutes": 30,
   "digest_time": "00:00",
   "quiet_hours_start": "22:00",
   "quiet_hours_end": "07:00",

@@ -1,6 +1,6 @@
 {
-  "last_run": "2026-04-12T12:33:49.730Z",
-  "last_digest_sent_at": null,
+  "last_run": "2026-04-12T12:44:47.479Z",
+  "last_digest_sent_at": "2026-04-12T12:44:47.479Z",
   "issues": {
     "PremanshChakraborty/issue_tracker_playground#1": {
       "issue_author": "PremanshChakraborty",
@@ -11,8 +11,8 @@
       "inactivity_alerted": false,
       "inactivity_last_alerted_at": null,
       "last_telegram_message_id": 18,
-      "window_comment_count": 2,
-      "window_event_count": 1
+      "window_comment_count": 0,
+      "window_event_count": 0
     },
     "PremanshChakraborty/issue_tracker_playground#2": {
       "issue_author": "PremanshChakraborty",
@@ -26,7 +26,7 @@
       "inactivity_last_alerted_at": null,
       "last_telegram_message_id": 20,
       "window_comment_count": 0,
-      "window_event_count": 1
+      "window_event_count": 0
     },
     "PremanshChakraborty/issue_tracker_playground#3": {
       "issue_author": "PremanshChakraborty",
@@ -37,7 +37,7 @@
       "inactivity_alerted": false,
       "inactivity_last_alerted_at": null,
       "last_telegram_message_id": null,
-      "window_comment_count": 1,
+      "window_comment_count": 0,
       "window_event_count": 0
     }
   }

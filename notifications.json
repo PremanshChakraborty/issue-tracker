@@ -223,5 +223,89 @@
     },
     "delivered_to": "telegram",
     "digest_id": null
+  },
+  {
+    "id": "bc9d8a92-c4f2-4eb7-b68c-9e1d0a9d5474",
+    "timestamp": "2026-04-12T12:33:50.983Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#1",
+    "type": "status_change",
+    "mode_at_time": "awaiting_reply",
+    "priority_at_time": "critical",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty unassigned @PremanshChakraborty",
+      "detail": ""
+    },
+    "delivered_to": "telegram"
+  },
+  {
+    "id": "f7dcdc7f-31d8-4737-891b-442e65767f90",
+    "timestamp": "2026-04-12T12:33:50.983Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#1",
+    "type": "comment",
+    "mode_at_time": "awaiting_reply",
+    "priority_at_time": "critical",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty (Author) commented",
+      "detail": "watch users test"
+    },
+    "delivered_to": "telegram"
+  },
+  {
+    "id": "2c7cea86-556e-4f9f-9c80-3476952cc159",
+    "timestamp": "2026-04-12T12:33:50.983Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#1",
+    "type": "comment",
+    "mode_at_time": "awaiting_reply",
+    "priority_at_time": "critical",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty (Author) commented",
+      "detail": "for digest"
+    },
+    "delivered_to": "telegram"
+  },
+  {
+    "id": "051e170b-b1f0-4dc2-9d6d-c59b208202ed",
+    "timestamp": "2026-04-12T12:33:52.198Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#2",
+    "type": "status_change",
+    "mode_at_time": "inactivity_watch",
+    "priority_at_time": "watching",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty assigned @PremanshChakraborty",
+      "detail": ""
+    },
+    "delivered_to": "telegram"
+  },
+  {
+    "id": "836566a1-05eb-4f98-8577-246e7cfc8208",
+    "timestamp": "2026-04-12T12:33:52.198Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#2",
+    "type": "spike",
+    "mode_at_time": "inactivity_watch",
+    "priority_at_time": "watching",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "Activity spike: 7 new comments detected",
+      "detail": "Active users recently: @PremanshChakraborty"
+    },
+    "delivered_to": "telegram"
+  },
+  {
+    "id": "df0663cb-fa52-487c-9505-ce5af51988dc",
+    "timestamp": "2026-04-12T12:33:52.739Z",
+    "issue_ref": "PremanshChakraborty/issue_tracker_playground#3",
+    "type": "comment",
+    "mode_at_time": "wip_watch",
+    "priority_at_time": "low",
+    "payload": {
+      "actor": "PremanshChakraborty",
+      "summary": "@PremanshChakraborty (Author) commented",
+      "detail": "can i get a notif"
+    },
+    "delivered_to": "frontend_only"
   }
 ]

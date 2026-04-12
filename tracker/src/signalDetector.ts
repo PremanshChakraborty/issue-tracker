@@ -26,7 +26,7 @@ const KNOWN_BOTS = new Set([
   'sweep-ai[bot]',
 ]);
 
-const SPIKE_COMMENT_THRESHOLD = 3; // ≥3 comments in one window
+const SPIKE_COMMENT_THRESHOLD = 5; // ≥3 comments in one window
 const SPIKE_SILENCE_DAYS = 7;      // after ≥7 days of silence
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────

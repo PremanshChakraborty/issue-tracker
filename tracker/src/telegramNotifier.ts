@@ -38,11 +38,10 @@ function buildDailyDigestMessage(payload: DailyDigestPayload, configMap: Map<str
     for (const item of payload.low) {
       const config = configMap.get(item.ref)!;
       const url = `https://github.com/${config.repo}/issues/${config.issue_number}`;
-      lines.push(`• <a href="${url}">${config.repo}#${config.issue_number}</a>: ` + 
-        (item.is_inactive ? `<i>Inactive for ${item.inactivity_days}d</i> ` : '') +
-        (item.total_comments_today > 0 ? `💬 ${item.total_comments_today} ` : '') +
-        (item.total_events_today > 0 ? `🔄 ${item.total_events_today}` : '')
-      );
+      const cStr = item.total_comments_today > 0 ? `💬 ${item.total_comments_today} comment${item.total_comments_today > 1 ? 's' : ''} ` : '';
+      const eStr = item.total_events_today > 0 ? `🔄 ${item.total_events_today} event${item.total_events_today > 1 ? 's' : ''}` : '';
+      const iStr = item.is_inactive ? `📉 <i>Inactive for ${item.inactivity_days} days</i> ` : '';
+      lines.push(`• <a href="${url}">${config.repo}#${config.issue_number}</a>: ${iStr}${cStr}${eStr}`);
     }
     lines.push('');
   }
@@ -56,6 +55,9 @@ function buildDailyDigestMessage(payload: DailyDigestPayload, configMap: Map<str
       
       if (item.is_inactive) {
         lines.push(`  ↳ 📉 <i>Inactive for ${item.inactivity_days} days</i>`);
+      }
+      if (item.events_today > 0) {
+        lines.push(`  ↳ 🔄 ${item.events_today} event${item.events_today > 1 ? 's' : ''}`);
       }
       if (item.grouped_comments) {
          const { authorLogin, roleLabel, first_body_snippet, total_count } = item.grouped_comments;
@@ -72,11 +74,12 @@ function buildDailyDigestMessage(payload: DailyDigestPayload, configMap: Map<str
     for (const item of payload.critical_summary) {
        const config = configMap.get(item.ref)!;
        const url = `https://github.com/${config.repo}/issues/${config.issue_number}`;
-       lines.push(`• <a href="${url}">${config.repo}#${config.issue_number}</a>: ` +
-         (item.comments_today > 0 ? `💬 ${item.comments_today} ` : '') +
-         (item.events_today > 0 ? `🔄 ${item.events_today}` : '')
-       );
+       const cStr = item.comments_today > 0 ? `💬 ${item.comments_today} comment${item.comments_today > 1 ? 's' : ''} ` : '';
+       const eStr = item.events_today > 0 ? `🔄 ${item.events_today} event${item.events_today > 1 ? 's' : ''}` : '';
+       const iStr = item.is_inactive ? `📉 <i>Inactive for ${item.inactivity_days} days</i> ` : '';
+       lines.push(`• <a href="${url}">${config.repo}#${config.issue_number}</a>: ${iStr}${cStr}${eStr}`);
     }
+    lines.push('');
   }
 
   if (payload.low.length === 0 && payload.watching.length === 0 && payload.critical_summary.length === 0) {

@@ -16,3 +16,6 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# UI — separate git repo
+issue-tracker-ui/

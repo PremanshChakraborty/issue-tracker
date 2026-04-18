@@ -1,10 +1,6 @@
 name: Issue Tracker Cron
 
 on:
-  schedule:
-    # Every 30 minutes
-    - cron: "*/30 12 * * *"
-  # Allow manual trigger for testing
   workflow_dispatch:
 
 jobs:
@@ -17,8 +13,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          # Use PAT so the push commit doesn't re-trigger this workflow
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -32,7 +27,7 @@ jobs:
       - name: Run tracker
         run: npm run start -w tracker
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ github.token }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 

@@ -97,7 +97,9 @@ async function main(): Promise<void> {
   console.log('=== Issue Tracker Cron Start ===');
   const now = new Date();
 
-  const pat = requireEnv('GH_PAT');
+  // GITHUB_TOKEN is the built-in Actions token — automatically available in every workflow run.
+  // Users never need to create a PAT. It has read access to all public repos.
+  const pat = requireEnv('GITHUB_TOKEN');
   const telegramToken = requireEnv('TELEGRAM_BOT_TOKEN');
   const telegramChatId = requireEnv('TELEGRAM_CHAT_ID');
 

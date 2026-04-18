@@ -28,10 +28,8 @@ export async function generateDailyDigest(
   for (const [repoKey, repoIssues] of byRepo) {
     const [owner, repoName] = repoKey.split('/') as [string, string];
 
-    // Optimize: Only fetch repo data if we have Low issues or Watching issues that need comment expansion
-    const needsFetch = repoIssues.some(([, conf]) => 
-       conf.priority === 'low' || (conf.priority === 'watching' && (state.issues[conf.repo + '#' + conf.issue_number]?.window_comment_count || 0) > 0)
-    );
+    // Optimize: Always fetch repo data once per daily run if the repo has watched issues.
+    const needsFetch = repoIssues.length > 0;
 
     let repoComments: GHComment[] = [];
     let repoEvents: GHEvent[] = [];
@@ -66,61 +64,55 @@ export async function generateDailyDigest(
          isInactive = daysSilent >= config.inactivity_threshold_days;
       }
 
+      // Filter the 24-hour Repo data array cleanly
+      const issueComments = repoComments
+          .filter(c => extractIssueNumber(c.issue_url) === parseInt(issueNumber, 10))
+          .filter(c => passesCommentFilter(c, config, settings));
+      const issueEvents = repoEvents.filter(e => e.issue?.number === parseInt(issueNumber, 10));
+      const relevantComments = issueComments.filter(c => isWatchedUser(c, config.watch_users, issueState));
+      
+      const hasActivity = relevantComments.length > 0 || issueEvents.length > 0;
+      
+      // For digest summaries, any literal activity today breaks the inactivity streak.
+      if (hasActivity) {
+        isInactive = false;
+      }
+
       if (config.priority === 'critical') {
-        if (issueState.window_comment_count > 0 || issueState.window_event_count > 0) {
+        if (hasActivity || isInactive) {
            payload.critical_summary.push({
              ref: issueRef,
-             comments_today: issueState.window_comment_count,
-             events_today: issueState.window_event_count
+             comments_today: relevantComments.length,
+             events_today: issueEvents.length,
+             is_inactive: isInactive,
+             inactivity_days: isInactive ? Math.floor(daysSilent) : undefined
            });
         }
       } 
       else if (config.priority === 'watching') {
         let groupedComments: DailyDigestPayload['watching'][0]['grouped_comments'] = undefined;
         
-        if (issueState.window_comment_count > 0) {
-           const issueComments = repoComments
-             .filter(c => extractIssueNumber(c.issue_url) === parseInt(issueNumber, 10))
-             .filter(c => passesCommentFilter(c, config, settings));
-           
-           const relevantComments = issueComments.filter(c => isWatchedUser(c, config.watch_users, issueState));
-           
-           if (relevantComments.length > 0) {
-             const first = relevantComments[0];
-             groupedComments = {
-               authorLogin: first.user.login,
-               roleLabel: getUserRoleLabel(first, issueState),
-               first_body_snippet: first.body.slice(0, 200),
-               total_count: relevantComments.length
-             };
-           }
+        if (relevantComments.length > 0) {
+           const first = relevantComments[0];
+           groupedComments = {
+             authorLogin: first.user.login,
+             roleLabel: getUserRoleLabel(first, issueState),
+             first_body_snippet: first.body.slice(0, 200),
+             total_count: relevantComments.length
+           };
         }
 
-        // Only include in digest if there is something to say (comments or inactivity)
-        if (groupedComments || isInactive) {
+        if (hasActivity || isInactive) {
            payload.watching.push({
              ref: issueRef,
              is_inactive: isInactive,
              inactivity_days: isInactive ? Math.floor(daysSilent) : undefined,
+             events_today: issueEvents.length,
              grouped_comments: groupedComments
            });
         }
       }
       else if (config.priority === 'low') {
-         const issueComments = repoComments
-             .filter(c => extractIssueNumber(c.issue_url) === parseInt(issueNumber, 10))
-             .filter(c => passesCommentFilter(c, config, settings));
-         const issueEvents = repoEvents.filter(e => e.issue?.number === parseInt(issueNumber, 10));
-         
-         const relevantComments = issueComments.filter(c => isWatchedUser(c, config.watch_users, issueState));
-         
-         const hasActivity = relevantComments.length > 0 || issueEvents.length > 0;
-
-         // For low, inactivity requires no activity over the window
-         if (hasActivity) {
-           isInactive = false;
-         }
-
          if (hasActivity || isInactive) {
             payload.low.push({
               ref: issueRef,

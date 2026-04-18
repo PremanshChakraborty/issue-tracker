@@ -162,12 +162,15 @@ export interface DailyDigestPayload {
     ref: string; 
     comments_today: number; 
     events_today: number; 
+    is_inactive: boolean;
+    inactivity_days?: number;
   }>;
 
   watching: Array<{
     ref: string;
     is_inactive: boolean;
     inactivity_days?: number;
+    events_today: number;
     grouped_comments?: {
       authorLogin: string;
       roleLabel: string;

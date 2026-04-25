@@ -19,3 +19,6 @@ Thumbs.db
 
 # UI — separate git repo
 issue-tracker-ui/
+
+graphify-out/
+.claude/

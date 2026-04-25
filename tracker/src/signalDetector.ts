@@ -26,8 +26,6 @@ const KNOWN_BOTS = new Set([
   'sweep-ai[bot]',
 ]);
 
-const SPIKE_COMMENT_THRESHOLD = 5; // ≥3 comments in one window
-const SPIKE_SILENCE_DAYS = 7;      // after ≥7 days of silence
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -65,7 +63,8 @@ export function passesCommentFilter(
   config: IssueConfig,
   settings: GlobalSettings,
 ): boolean {
-  if (isBot(comment.user.login, comment.user.type, settings.filter_bots)) return false;
+  const effectiveFilterBots = settings.filter_bots && !(config.show_bot_comments ?? false);
+  if (isBot(comment.user.login, comment.user.type, effectiveFilterBots)) return false;
   if (comment.body.trim().length < settings.min_comment_length) return false;
   if (config.ignore_users.includes(comment.user.login)) return false;
   return true;
@@ -233,7 +232,7 @@ export function detectSignals(
   const filteredEvents = rawEvents.filter((evt) => {
     const login = evt.actor?.login ?? '';
     const userType = evt.actor?.type ?? 'User';
-    if (isBot(login, userType, settings.filter_bots)) return false;
+    if (isBot(login, userType, settings.filter_bots && !(config.show_bot_comments ?? false))) return false;
     if (config.ignore_users.includes(login)) return false;
     return true;
   });
@@ -315,7 +314,7 @@ export function detectSignals(
 
   // ── Step E: Activity spike detection ──────────────────────────────────────────
   if (config.priority !== 'critical' && config.priority !== 'low') {
-    if (updatedState.window_comment_count >= SPIKE_COMMENT_THRESHOLD) {
+    if (updatedState.window_comment_count >= (settings.spike_comment_threshold ?? 5)) {
       const firstActors = [...new Set(relevantComments.slice(0, 5).map((c) => `@${c.user.login}`))].join(', ');
       notifications.push(
         makeNotification(

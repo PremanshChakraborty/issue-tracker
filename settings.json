@@ -6,5 +6,6 @@
   "timezone": "Asia/Kolkata",
   "filter_bots": true,
   "min_comment_length": 1,
+  "spike_comment_threshold": 5,
   "default_mode": "inactivity_watch"
 }

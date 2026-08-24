@@ -8,6 +8,7 @@ You pick the GitHub issues you care about, choose how closely to watch each one,
 
 ## Table of contents
 
+- [Live app](#live-app)
 - [How it works](#how-it-works)
 - [Repository layout](#repository-layout)
 - [Data model](#data-model)
@@ -17,6 +18,16 @@ You pick the GitHub issues you care about, choose how closely to watch each one,
 - [Local development](#local-development)
 - [Environment variables](#environment-variables)
 - [Deployment](#deployment)
+
+---
+
+## Live app
+
+**[issue-tracker-ui.vercel.app](https://issue-tracker-ui.vercel.app/)**
+
+Sign in with GitHub and the setup wizard walks you through generating your own
+tracker repo from the template, installing the GitHub App on it, and connecting
+Telegram. Everything the app stores lives in that repo, under your account.
 
 ---
 
